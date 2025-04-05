@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Product Check</title>
+</head>
+<body>
+<h1>Check Product Authenticity</h1>
+<input type="text" id="barcodeInput" placeholder="Enter Barcode" />
+<button onclick="checkProduct()">Check</button>
+<pre id="result"></pre>
+
+<script>
+    async function checkProduct() {
+        const barcode = document.getElementById('barcodeInput').value;
+        const response = await fetch('http://localhost:8080/api/check-product', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ barcode })
+        });
+        const data = await response.json();
+        document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+    }
+</script>
+</body>
+</html>

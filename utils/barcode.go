@@ -16,8 +16,8 @@ func IsBarcodeValid(code string) bool {
 		digits[i] = d
 	}
 
-	sumOdd := 0  // positions 1,3,5,7,9,11 (0-based index)
-	sumEven := 0 // positions 2,4,6,8,10,12
+	sumOdd := 0
+	sumEven := 0
 
 	for i := 0; i < 12; i++ {
 		if i%2 == 0 {
@@ -31,4 +31,21 @@ func IsBarcodeValid(code string) bool {
 	checksum := (10 - (total % 10)) % 10
 
 	return checksum == digits[12]
+}
+
+func GetCountryFromBarcode(code string) string {
+	prefix := code[0:3]
+
+	switch prefix {
+	case "690", "691", "692", "693", "694", "695", "696", "697", "698", "699":
+		return "Made in China"
+	case "500", "509":
+		return "Made in UK"
+	case "890":
+		return "Made in India"
+	case "000", "001", "002", "003", "004", "005", "006", "007", "008", "009":
+		return "Made in USA"
+	default:
+		return "Unknown origin"
+	}
 }

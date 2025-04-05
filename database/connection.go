@@ -15,21 +15,15 @@ func Connect() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, err := mongo.Connect(ctx, clientOptions)
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = client.Ping(ctx, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("✅ Connected to MongoDB!")
 	Client = client
+	log.Println("✅ Connected to MongoDB")
 }
 
-func GetProductCollection() *mongo.Collection {
-	return Client.Database("productdb").Collection("products")
+func GetCollection() *mongo.Collection {
+	return Client.Database("productdb").Collection("checked_products")
 }
