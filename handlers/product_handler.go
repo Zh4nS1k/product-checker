@@ -15,7 +15,6 @@ import (
 	"time"
 )
 
-// CheckProduct: Handles the barcode check and creates a new history entry
 func CheckProduct(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Barcode string `json:"barcode"`
@@ -41,11 +40,8 @@ func CheckProduct(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(entry)
 }
 
-// GetHistory: Fetch all product check history records
 func GetHistory(w http.ResponseWriter, r *http.Request) {
 	collection := database.GetCollection()
-
-	// Use bson.D{} to create an empty filter for fetching all documents
 	cursor, err := collection.Find(context.Background(), bson.D{})
 	if err != nil {
 		log.Fatal(err)
@@ -60,7 +56,6 @@ func GetHistory(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(products)
 }
 
-// GetHistoryByID: Fetch a product check history by ID
 func GetHistoryByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -88,7 +83,6 @@ func GetHistoryByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(product)
 }
 
-// UpdateHistory: Update a specific product check history by ID
 func UpdateHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -104,14 +98,12 @@ func UpdateHistory(w http.ResponseWriter, r *http.Request) {
 
 	collection := database.GetCollection()
 	filter := bson.M{"_id": objID}
-	update := bson.M{
-		"$set": bson.M{
-			"barcode":     updatedProduct.Barcode,
-			"is_original": updatedProduct.IsOriginal,
-			"country":     updatedProduct.Country,
-			"checked_at":  updatedProduct.CheckedAt,
-		},
-	}
+	update := bson.M{"$set": bson.M{
+		"barcode":     updatedProduct.Barcode,
+		"is_original": updatedProduct.IsOriginal,
+		"country":     updatedProduct.Country,
+		"checked_at":  updatedProduct.CheckedAt,
+	}}
 
 	result, err := collection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
@@ -129,7 +121,6 @@ func UpdateHistory(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedProduct)
 }
 
-// DeleteHistory: Delete a product check history by ID
 func DeleteHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -153,5 +144,5 @@ func DeleteHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent) // 204 No Content
+	w.WriteHeader(http.StatusNoContent)
 }
