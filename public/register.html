@@ -13,6 +13,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative;
         }
         .register-container {
             max-width: 400px;
@@ -40,6 +41,22 @@
             text-align: center;
             margin-top: 1rem;
         }
+        .home-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .home-btn:hover {
+            background-color: #2980b9;
+        }
     </style>
 </head>
 <body>
@@ -52,6 +69,8 @@
         Already have an account? <a href="/login">Login</a>
     </div>
 </div>
+
+<button class="home-btn" onclick="goHome()">Home</button>
 
 <script>
     async function register() {
@@ -88,12 +107,17 @@
         }
     }
 
-    // Позволяем регистрироваться по нажатию Enter
+    // Allow register on Enter key press
     document.getElementById('password').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             register();
         }
     });
+
+    // Redirect to home page
+    function goHome() {
+        window.location.href = "/"; // Redirect to home page (index.html or root)
+    }
 </script>
 </body>
 </html>

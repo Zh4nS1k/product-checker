@@ -5,6 +5,7 @@ import (
 	"product-checker/database"
 	"product-checker/handlers"
 	"product-checker/middleware"
+	"product-checker/migrations"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,6 +14,9 @@ func main() {
 	// Инициализация базы данных
 	database.ConnectPostgres()
 	database.ConnectMongo()
+
+	// Запуск миграций
+	migrations.RunMigrations(database.DB)
 
 	r := gin.Default()
 

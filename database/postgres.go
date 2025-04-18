@@ -2,7 +2,6 @@ package database
 
 import (
 	"log"
-	"product-checker/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -16,11 +15,6 @@ func ConnectPostgres() {
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("❌ Failed to connect to PostgreSQL:", err)
-	}
-
-	err = DB.AutoMigrate(&models.User{})
-	if err != nil {
-		log.Fatal("❌ AutoMigrate failed:", err)
 	}
 
 	log.Println("✅ Connected to PostgreSQL")
