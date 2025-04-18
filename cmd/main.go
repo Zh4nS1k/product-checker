@@ -10,45 +10,33 @@ import (
 )
 
 func main() {
+	// Инициализация базы данных
+	database.ConnectPostgres()
+	database.ConnectMongo()
+
 	r := gin.Default()
 
-	// Отдаем статичные файлы из папки public
+	// Статические файлы
 	r.Static("/static", "./public")
+	r.GET("/", func(c *gin.Context) { c.File("./public/index.html") })
+	r.GET("/login", func(c *gin.Context) { c.File("./public/login.html") })
+	r.GET("/register", func(c *gin.Context) { c.File("./public/register.html") })
 
-	// Статические страницы
-	r.GET("/", func(c *gin.Context) {
-		c.File("./public/index.html")
-	})
-	r.GET("/login", func(c *gin.Context) {
-		c.File("./public/login.html")
-	})
-	r.GET("/register", func(c *gin.Context) {
-		c.File("./public/register.html")
-	})
-
-	// Соединение с базами данных
-	database.ConnectMongo()
-	database.ConnectPostgres()
-
-	// API маршруты
+	// API endpoints
 	api := r.Group("/api")
 	{
 		api.POST("/register", handlers.Register)
 		api.POST("/login", handlers.Login)
 		api.POST("/check-product", handlers.CheckProduct)
-
-		// Защищенные маршруты с авторизацией
-		protected := api.Group("/")
-		protected.Use(middleware.JWTAuthMiddleware())
-		{
-			protected.GET("/history", handlers.GetHistory)
-			protected.GET("/history/:id", handlers.GetHistoryByID)
-			protected.PUT("/history/:id", handlers.UpdateHistory)
-			protected.DELETE("/history/:id", handlers.DeleteHistory)
-		}
 	}
 
-	// Логирование старта сервера
+	// Protected endpoints
+	protected := api.Group("/")
+	protected.Use(middleware.JWTAuthMiddleware())
+	{
+		protected.GET("/history", handlers.GetHistory)
+	}
+
 	log.Println("🚀 Server started at :8080")
 	r.Run(":8080")
 }

@@ -1,16 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Product Authenticity Checker</title>
-
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
-
-    <!-- Material Icons -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
@@ -19,7 +14,6 @@
             padding: 2rem;
             min-height: 100vh;
         }
-
         .container {
             max-width: 800px;
             margin: auto;
@@ -29,24 +23,20 @@
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
         }
-
         h1 {
             text-align: center;
             font-weight: 600;
             margin-bottom: 1.5rem;
             color: #2c3e50;
         }
-
         .form-control {
             border-radius: 12px;
             border: 1px solid #dee2e6;
         }
-
         .btn {
             border-radius: 12px;
             font-weight: 500;
         }
-
         .card {
             border-radius: 14px;
             padding: 1rem;
@@ -54,13 +44,11 @@
             background: #ffffff;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
         }
-
         .btn-icon {
             border: none;
             background: transparent;
             color: #555;
         }
-
         pre {
             background: #1e1e1e;
             color: #00ff90;
@@ -68,25 +56,30 @@
             border-radius: 10px;
             overflow-x: auto;
         }
-
         .auth-buttons {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-
-        .auth-buttons button {
-            margin-left: 10px;
-            border-radius: 12px;
+        .user-info {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-right: 10px;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
         }
     </style>
 </head>
 <body>
 <!-- Auth Buttons -->
-<div class="auth-buttons">
-    <button class="btn btn-outline-primary" onclick="window.location.href='/login'">Login</button>
-    <button class="btn btn-primary" onclick="window.location.href='/register'">Register</button>
+<div class="auth-buttons" id="authButtons">
+    <!-- Заполнится JavaScript -->
 </div>
 
 <div class="container">
@@ -123,6 +116,46 @@
 <!-- Tesseract.js for OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 <script>
+    // Проверка авторизации при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        updateAuthUI();
+        loadHistory();
+    });
+
+    // Обновление UI в зависимости от статуса авторизации
+    function updateAuthUI() {
+        const authButtons = document.getElementById('authButtons');
+        const token = localStorage.getItem('token');
+
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                authButtons.innerHTML = `
+                    <span class="user-info">${payload.username}</span>
+                    <button class="btn logout-btn" onclick="logout()">Logout</button>
+                `;
+            } catch (e) {
+                console.error('Error parsing token:', e);
+                authButtons.innerHTML = `
+                    <button class="btn btn-outline-primary" onclick="window.location.href='/login'">Login</button>
+                    <button class="btn btn-primary" onclick="window.location.href='/register'">Register</button>
+                `;
+            }
+        } else {
+            authButtons.innerHTML = `
+                <button class="btn btn-outline-primary" onclick="window.location.href='/login'">Login</button>
+                <button class="btn btn-primary" onclick="window.location.href='/register'">Register</button>
+            `;
+        }
+    }
+
+    // Выход из системы
+    function logout() {
+        localStorage.removeItem('token');
+        updateAuthUI();
+        window.location.reload();
+    }
+
     async function checkProduct(barcodeOverride = null) {
         const barcode = barcodeOverride || document.getElementById('barcodeInput').value;
         if (!barcode) {
@@ -130,67 +163,93 @@
             return;
         }
 
-        const response = await fetch('/api/check-product', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ barcode })
-        });
-        const data = await response.json();
-        document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-        loadHistory();
+        const token = localStorage.getItem('token');
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        try {
+            const response = await fetch('/api/check-product', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ product_id: barcode })
+            });
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            const data = await response.json();
+            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+
+            if (token) {
+                await loadHistory();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('result').innerText = `Error: ${error.message}`;
+        }
     }
 
     async function loadHistory() {
-        const response = await fetch('/api/history');
-        const data = await response.json();
-        const container = document.getElementById('historyList');
-        container.innerHTML = '';
+        const token = localStorage.getItem('token');
+        if (!token) {
+            document.getElementById('historyList').innerHTML =
+                '<div class="alert alert-info">Please login to view your history</div>';
+            return;
+        }
 
-        data.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-          <div><strong>Barcode:</strong> ${item.barcode}</div>
-          <div><strong>Country:</strong> ${item.country}</div>
-          <div><strong>Original:</strong> ${item.is_original}</div>
-          <div><strong>Checked At:</strong> ${new Date(item.checked_at).toLocaleString()}</div>
-          <div class="mt-2 d-flex gap-2">
-            <button class="btn btn-outline-warning btn-sm" onclick="editItem('${item.id}')">
-              <span class="material-icons">edit</span>
-            </button>
-            <button class="btn btn-outline-danger btn-sm" onclick="deleteItem('${item.id}')">
-              <span class="material-icons">delete</span>
-            </button>
-          </div>
-        `;
-            container.appendChild(card);
-        });
+        try {
+            const response = await fetch('/api/history', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            const container = document.getElementById('historyList');
+            container.innerHTML = '';
+
+            // Проверяем, что history существует и является массивом
+            const history = result.history || [];
+
+            if (history.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">No history yet</div>';
+                return;
+            }
+
+            // Создаем список истории
+            history.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card mb-2';
+                card.innerHTML = `
+                    <div class="card-body">
+                        <h5 class="card-title">Product ID: ${item.product_id}</h5>
+                        <p class="card-text">
+                            <strong>Result:</strong> ${item.result}<br>
+                            <strong>Date:</strong> ${new Date(item.checked_at).toLocaleString()}
+                        </p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Error loading history:', error);
+            document.getElementById('historyList').innerHTML = `
+                <div class="alert alert-danger">
+                    Error loading history: ${error.message}
+                </div>
+            `;
+        }
     }
-
-    async function deleteItem(id) {
-        if (!confirm("Are you sure you want to delete this entry?")) return;
-
-        await fetch(`/api/history/${id}`, { method: 'DELETE' });
-        loadHistory();
-    }
-
-    async function editItem(id) {
-        const newBarcode = prompt("Enter new barcode:");
-        if (!newBarcode) return;
-
-        const isOriginal = confirm("Is this product original?");
-        const country = prompt("Enter country of origin:");
-        const checkedAt = new Date().toISOString();
-
-        await fetch(`/api/history/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ barcode: newBarcode, is_original: isOriginal, country, checked_at: checkedAt })
-        });
-
-        loadHistory();
-    }
-
     async function extractBarcode() {
         const fileInput = document.getElementById('imageInput');
         if (fileInput.files.length === 0) {
@@ -200,16 +259,19 @@
 
         const image = fileInput.files[0];
         const reader = new FileReader();
-        reader.onload = async function () {
-            const result = await Tesseract.recognize(reader.result, 'eng');
-            const text = result.data.text.replace(/\D/g, '');
-            document.getElementById('barcodeInput').value = text.slice(0, 13);
-            checkProduct(text.slice(0, 13));
+        reader.onload = async function() {
+            try {
+                const result = await Tesseract.recognize(reader.result, 'eng');
+                const text = result.data.text.replace(/\D/g, '');
+                document.getElementById('barcodeInput').value = text.slice(0, 13);
+                checkProduct(text.slice(0, 13));
+            } catch (error) {
+                console.error('OCR Error:', error);
+                alert('Failed to extract barcode from image');
+            }
         };
         reader.readAsDataURL(image);
     }
-
-    window.onload = loadHistory;
 </script>
 </body>
 </html>

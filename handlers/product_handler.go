@@ -1,145 +1,50 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 	"product-checker/database"
-	"product-checker/models"
 	"product-checker/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func CheckProduct(c *gin.Context) {
 	var input struct {
-		Barcode string `json:"barcode"`
+		ProductID string `json:"product_id" binding:"required"`
 	}
-	if err := c.BindJSON(&input); err != nil {
-		c.JSON(400, gin.H{"error": "Invalid input"})
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
 		return
 	}
 
-	original := utils.IsBarcodeValid(input.Barcode)
-	country := utils.GetCountryFromBarcode(input.Barcode)
-	now := time.Now().Format(time.RFC3339)
-
-	entry := models.CheckedProduct{
-		Barcode:    input.Barcode,
-		IsOriginal: original,
-		Country:    country,
-		CheckedAt:  now,
+	// Валидация штрих-кода
+	isValid := utils.IsBarcodeValid(input.ProductID)
+	result := "Valid"
+	if !isValid {
+		result = "Invalid"
 	}
 
-	collection := database.GetCollection()
-	result, _ := collection.InsertOne(c.Request.Context(), entry)
-	entry.ID = result.InsertedID.(primitive.ObjectID)
+	country := utils.GetCountryFromBarcode(input.ProductID)
 
-	c.JSON(200, entry)
-}
-
-func GetHistory(c *gin.Context) {
-	collection := database.GetCollection()
-	cursor, err := collection.Find(context.Background(), bson.D{})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
-		return
+	responseData := gin.H{
+		"product_id":  input.ProductID,
+		"result":      result,
+		"is_original": isValid,
+		"country":     country,
+		"checked_at":  time.Now().Format(time.RFC3339),
 	}
 
-	var products []models.CheckedProduct
-	if err := cursor.All(context.Background(), &products); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode products"})
-		return
-	}
-
-	c.JSON(http.StatusOK, products)
-}
-
-func GetHistoryByID(c *gin.Context) {
-	id := c.Param("id")
-
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
-		return
-	}
-
-	collection := database.GetCollection()
-	var product models.CheckedProduct
-	err = collection.FindOne(context.Background(), bson.M{"_id": objID}).Decode(&product)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+	// Сохранение истории только для авторизованных пользователей
+	if username, exists := c.Get("username"); exists {
+		err := database.AddHistoryToMongo(username.(string), input.ProductID, result)
+		if err != nil {
+			responseData["history_error"] = "Failed to save history: " + err.Error()
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+			responseData["history_saved"] = true
 		}
-		return
 	}
 
-	c.JSON(http.StatusOK, product)
-}
-
-func UpdateHistory(c *gin.Context) {
-	id := c.Param("id")
-
-	var updatedProduct models.CheckedProduct
-	if err := c.BindJSON(&updatedProduct); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-		return
-	}
-
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
-		return
-	}
-
-	collection := database.GetCollection()
-	filter := bson.M{"_id": objID}
-	update := bson.M{"$set": bson.M{
-		"barcode":     updatedProduct.Barcode,
-		"is_original": updatedProduct.IsOriginal,
-		"country":     updatedProduct.Country,
-		"checked_at":  updatedProduct.CheckedAt,
-	}}
-
-	result, err := collection.UpdateOne(context.Background(), filter, update)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
-		return
-	}
-
-	if result.MatchedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, updatedProduct)
-}
-
-func DeleteHistory(c *gin.Context) {
-	id := c.Param("id")
-
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
-		return
-	}
-
-	collection := database.GetCollection()
-	result, err := collection.DeleteOne(context.Background(), bson.M{"_id": objID})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
-		return
-	}
-
-	if result.DeletedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
-		return
-	}
-
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, responseData)
 }
