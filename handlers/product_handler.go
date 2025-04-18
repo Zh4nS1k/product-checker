@@ -19,7 +19,7 @@ func CheckProduct(c *gin.Context) {
 		Barcode string `json:"barcode"`
 	}
 	if err := c.BindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		c.JSON(400, gin.H{"error": "Invalid input"})
 		return
 	}
 
@@ -38,7 +38,7 @@ func CheckProduct(c *gin.Context) {
 	result, _ := collection.InsertOne(c.Request.Context(), entry)
 	entry.ID = result.InsertedID.(primitive.ObjectID)
 
-	c.JSON(http.StatusOK, entry)
+	c.JSON(200, entry)
 }
 
 func GetHistory(c *gin.Context) {

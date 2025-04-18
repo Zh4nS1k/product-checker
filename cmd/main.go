@@ -10,15 +10,12 @@ import (
 )
 
 func main() {
-	database.Connect()
-	database.ConnectPostgres()
-
 	r := gin.Default()
 
-	// Static files
+	// Отдаем статичные файлы из папки public
 	r.Static("/static", "./public")
 
-	// Pages
+	// Статические страницы
 	r.GET("/", func(c *gin.Context) {
 		c.File("./public/index.html")
 	})
@@ -29,15 +26,21 @@ func main() {
 		c.File("./public/register.html")
 	})
 
+	// Соединение с базами данных
+	database.ConnectMongo()
+	database.ConnectPostgres()
+
+	// API маршруты
 	api := r.Group("/api")
 	{
 		api.POST("/register", handlers.Register)
 		api.POST("/login", handlers.Login)
+		api.POST("/check-product", handlers.CheckProduct)
 
+		// Защищенные маршруты с авторизацией
 		protected := api.Group("/")
 		protected.Use(middleware.JWTAuthMiddleware())
 		{
-			protected.POST("/check-product", handlers.CheckProduct)
 			protected.GET("/history", handlers.GetHistory)
 			protected.GET("/history/:id", handlers.GetHistoryByID)
 			protected.PUT("/history/:id", handlers.UpdateHistory)
@@ -45,6 +48,7 @@ func main() {
 		}
 	}
 
+	// Логирование старта сервера
 	log.Println("🚀 Server started at :8080")
 	r.Run(":8080")
 }
