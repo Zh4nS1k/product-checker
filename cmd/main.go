@@ -13,12 +13,25 @@ import (
 func main() {
 	// Инициализация базы данных
 	database.ConnectPostgres()
-	database.ConnectMongo()
-
-	// Запуск миграций
 	migrations.RunMigrations(database.DB)
 
+	// Инициализация роутера
 	r := gin.Default()
+
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
 
 	// Статические файлы
 	r.Static("/static", "./public")
@@ -31,16 +44,18 @@ func main() {
 	{
 		api.POST("/register", handlers.Register)
 		api.POST("/login", handlers.Login)
-		api.POST("/check-product", handlers.CheckProduct)
-	}
 
-	// Protected endpoints
-	protected := api.Group("/")
-	protected.Use(middleware.JWTAuthMiddleware())
-	{
-		protected.GET("/history", handlers.GetHistory)
+		// Защищенные endpoints
+		protected := api.Group("/")
+		protected.Use(middleware.JWTAuthMiddleware())
+		{
+			protected.POST("/check-product", handlers.CheckProduct)
+			protected.GET("/history", handlers.GetHistory)
+		}
 	}
 
 	log.Println("🚀 Server started at :8080")
-	r.Run(":8080")
+	if err := r.Run(":8080"); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
 }

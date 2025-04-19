@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"product-checker/database"
 	"product-checker/utils"
@@ -19,32 +20,29 @@ func CheckProduct(c *gin.Context) {
 		return
 	}
 
-	// Валидация штрих-кода
 	isValid := utils.IsBarcodeValid(input.ProductID)
 	result := "Valid"
 	if !isValid {
 		result = "Invalid"
 	}
 
+	// Получаем username из контекста (гарантировано middleware)
+	username, _ := c.Get("username")
+	log.Printf("Saving history for user: %s, product: %s", username.(string), input.ProductID)
+
+	err := database.AddHistoryToPostgres(username.(string), input.ProductID, result)
+	if err != nil {
+		log.Printf("Failed to save history: %v", err)
+	}
+
 	country := utils.GetCountryFromBarcode(input.ProductID)
 
-	responseData := gin.H{
-		"product_id":  input.ProductID,
-		"result":      result,
-		"is_original": isValid,
-		"country":     country,
-		"checked_at":  time.Now().Format(time.RFC3339),
-	}
-
-	// Сохранение истории только для авторизованных пользователей
-	if username, exists := c.Get("username"); exists {
-		err := database.AddHistoryToMongo(username.(string), input.ProductID, result)
-		if err != nil {
-			responseData["history_error"] = "Failed to save history: " + err.Error()
-		} else {
-			responseData["history_saved"] = true
-		}
-	}
-
-	c.JSON(http.StatusOK, responseData)
+	c.JSON(http.StatusOK, gin.H{
+		"product_id":    input.ProductID,
+		"result":        result,
+		"is_original":   isValid,
+		"country":       country,
+		"checked_at":    time.Now().Format(time.RFC3339),
+		"history_saved": true,
+	})
 }

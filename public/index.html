@@ -157,24 +157,26 @@
     }
 
     async function checkProduct(barcodeOverride = null) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert("Please login first");
+            window.location.href = '/login';
+            return;
+        }
+
         const barcode = barcodeOverride || document.getElementById('barcodeInput').value;
         if (!barcode) {
             alert("Please enter or extract a barcode");
             return;
         }
 
-        const token = localStorage.getItem('token');
-        const headers = {
-            'Content-Type': 'application/json'
-        };
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-
         try {
             const response = await fetch('/api/check-product', {
                 method: 'POST',
-                headers: headers,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ product_id: barcode })
             });
 
@@ -183,26 +185,31 @@
             }
 
             const data = await response.json();
+            console.log("Check response:", data);
             document.getElementById('result').innerText = JSON.stringify(data, null, 2);
 
-            if (token) {
+            if (data.history_saved) {
                 await loadHistory();
+            } else {
+                console.error("History not saved!");
             }
         } catch (error) {
             console.error('Error:', error);
-            document.getElementById('result').innerText = `Error: ${error.message}`;
+            alert(`Error: ${error.message}`);
         }
     }
 
     async function loadHistory() {
         const token = localStorage.getItem('token');
         if (!token) {
+            console.log("No token - skipping history load");
             document.getElementById('historyList').innerHTML =
                 '<div class="alert alert-info">Please login to view your history</div>';
             return;
         }
 
         try {
+            console.log("Loading history with token:", token);
             const response = await fetch('/api/history', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -210,44 +217,45 @@
                 }
             });
 
+            console.log("History response status:", response.status);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const result = await response.json();
+            console.log("History data received:", result);
             const container = document.getElementById('historyList');
             container.innerHTML = '';
 
-            // Проверяем, что history существует и является массивом
             const history = result.history || [];
+            console.log(`Found ${history.length} history items`);
 
             if (history.length === 0) {
                 container.innerHTML = '<div class="alert alert-info">No history yet</div>';
                 return;
             }
 
-            // Создаем список истории
             history.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'card mb-2';
                 card.innerHTML = `
-                    <div class="card-body">
-                        <h5 class="card-title">Product ID: ${item.product_id}</h5>
-                        <p class="card-text">
-                            <strong>Result:</strong> ${item.result}<br>
-                            <strong>Date:</strong> ${new Date(item.checked_at).toLocaleString()}
-                        </p>
-                    </div>
-                `;
+                <div class="card-body">
+                    <h5 class="card-title">Product ID: ${item.product_id}</h5>
+                    <p class="card-text">
+                        <strong>Result:</strong> ${item.result}<br>
+                        <strong>Date:</strong> ${new Date(item.checked_at).toLocaleString()}
+                    </p>
+                </div>
+            `;
                 container.appendChild(card);
             });
         } catch (error) {
             console.error('Error loading history:', error);
             document.getElementById('historyList').innerHTML = `
-                <div class="alert alert-danger">
-                    Error loading history: ${error.message}
-                </div>
-            `;
+            <div class="alert alert-danger">
+                Error loading history: ${error.message}
+            </div>
+        `;
         }
     }
     async function extractBarcode() {
