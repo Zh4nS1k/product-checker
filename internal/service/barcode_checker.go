@@ -29,7 +29,7 @@ func NewExternalBarcodeChecker(apiKey string) *ExternalBarcodeChecker {
 	return &ExternalBarcodeChecker{
 		apiKey:  apiKey,
 		client:  &http.Client{Timeout: 10 * time.Second},
-		baseURL: "https://www.barcodelookup.com/api",
+		baseURL: "https://api.barcodelookup.com/v3/products",
 	}
 }
 
