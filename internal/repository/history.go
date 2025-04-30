@@ -13,6 +13,7 @@ type HistoryRepository interface {
 	Create(check *model.ProductCheck) error
 	GetByUserID(userID uint, page, limit int) ([]model.ProductCheck, int64, error)
 	DeleteByID(userID uint, id string) error
+	UpdateBarcode(userID uint, id string, newBarcode string) error
 }
 
 type historyRepository struct {
@@ -65,5 +66,25 @@ func (r *historyRepository) DeleteByID(userID uint, id string) error {
 
 	filter := bson.M{"_id": objID, "user_id": userID}
 	_, err = r.collection.DeleteOne(context.Background(), filter)
+	return err
+}
+
+func (r *historyRepository) UpdateBarcode(userID uint, id string, newBarcode string) error {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{
+		"_id":     objID,
+		"user_id": userID,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"barcode": newBarcode,
+		},
+	}
+
+	_, err = r.collection.UpdateOne(context.Background(), filter, update)
 	return err
 }

@@ -35,7 +35,6 @@ func NewExternalBarcodeChecker(apiKey string) *ExternalBarcodeChecker {
 
 func (e *ExternalBarcodeChecker) Check(barcode string) (bool, error) {
 	if e.apiKey == "" {
-		// Fallback to simple mock check if no API key
 		return len(barcode) > 8, nil
 	}
 

@@ -78,3 +78,35 @@ func (c *HistoryController) DeleteHistoryItem(ctx *gin.Context) {
 		"message": "History item deleted successfully",
 	})
 }
+
+func (c *HistoryController) UpdateBarcode(ctx *gin.Context) {
+	userID := ctx.MustGet("userID").(uint)
+	id := ctx.Param("id")
+
+	var request struct {
+		Barcode string `json:"barcode" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if err := c.historyService.UpdateBarcode(userID, id, request.Barcode); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to update barcode",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Barcode updated successfully",
+	})
+}

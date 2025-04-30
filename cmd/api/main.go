@@ -169,6 +169,7 @@ func startServer(
 		apiGroup.POST("/check", productController.CheckProduct)
 		apiGroup.GET("/history", historyController.GetHistory)
 		apiGroup.DELETE("/history/:id", historyController.DeleteHistoryItem)
+		apiGroup.PUT("/history/:id/barcode", historyController.UpdateBarcode)
 	}
 
 	adminGroup := r.Group("/admin")
