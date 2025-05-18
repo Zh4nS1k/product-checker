@@ -17,7 +17,7 @@ type Config struct {
 	Database struct {
 		Host        string `env:"POSTGRES_HOST" envDefault:"localhost"`
 		Port        string `env:"POSTGRES_PORT" envDefault:"5432"`
-		User        string `env:"POSTGRES_USER" envDefault:"zhanserik"`
+		User        string `env:"POSTGRES_USER" envDefault:"postgres"`
 		Password    string `env:"POSTGRES_PASSWORD" envDefault:"123456"`
 		Name        string `env:"POSTGRES_DB" envDefault:"barcode_checker"`
 		SSLMode     string `env:"POSTGRES_SSLMODE" envDefault:"disable"`

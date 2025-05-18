@@ -154,16 +154,20 @@ func startServer(
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.LoggingMiddleware(logger))
+	r.Use(CORSMiddleware())
+
+	authLimiter := middleware.RateLimiter(cfg.RateLimit.AuthLimit, cfg.RateLimit.AuthBurst, time.Minute)
+	apiLimiter := middleware.RateLimiter(cfg.RateLimit.APILimit, cfg.RateLimit.APIBurst, time.Minute)
 
 	authGroup := r.Group("/auth")
-	authGroup.Use(middleware.RateLimiter(cfg.RateLimit.AuthLimit, cfg.RateLimit.AuthBurst, time.Minute))
+	authGroup.Use(authLimiter)
 	{
 		authGroup.POST("/register", authController.Register)
 		authGroup.POST("/login", authController.Login)
 	}
 
 	apiGroup := r.Group("/api")
-	apiGroup.Use(middleware.RateLimiter(cfg.RateLimit.APILimit, cfg.RateLimit.APIBurst, time.Minute))
+	apiGroup.Use(apiLimiter)
 	apiGroup.Use(middleware.JWTAuth(cfg.Auth.JWTSecret))
 	{
 		apiGroup.POST("/check", productController.CheckProduct)
@@ -185,3 +189,86 @@ func startServer(
 		logger.Fatal("Failed to start server", zap.Error(err))
 	}
 }
+
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+
+		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept, Origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Range")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
+}
+
+//func startServer(
+//	cfg *config.Config,
+//	authController *controller.AuthController,
+//	productController *controller.ProductController,
+//	historyController *controller.HistoryController,
+//	adminController *controller.AdminController,
+//	logger *zap.Logger,
+//) {
+//	router := gin.Default()
+//	router.Use(CORSMiddleware())
+//	r := gin.New()
+//	r.Use(gin.Recovery())
+//	r.Use(middleware.LoggingMiddleware(logger))
+//
+//	authGroup := r.Group("/auth")
+//	authGroup.Use(middleware.RateLimiter(cfg.RateLimit.AuthLimit, cfg.RateLimit.AuthBurst, time.Minute))
+//	{
+//		authGroup.POST("/register", authController.Register)
+//		authGroup.POST("/login", authController.Login)
+//	}
+//
+//	apiGroup := r.Group("/api")
+//	apiGroup.Use(middleware.RateLimiter(cfg.RateLimit.APILimit, cfg.RateLimit.APIBurst, time.Minute))
+//	apiGroup.Use(middleware.JWTAuth(cfg.Auth.JWTSecret))
+//	{
+//		apiGroup.POST("/check", productController.CheckProduct)
+//		apiGroup.GET("/history", historyController.GetHistory)
+//		apiGroup.DELETE("/history/:id", historyController.DeleteHistoryItem)
+//		apiGroup.PUT("/history/:id/barcode", historyController.UpdateBarcode)
+//	}
+//
+//	adminGroup := r.Group("/admin")
+//	adminGroup.Use(middleware.JWTAuth(cfg.Auth.JWTSecret))
+//	adminGroup.Use(middleware.AdminOnly())
+//	{
+//		adminGroup.GET("/users", adminController.ListUsers)
+//		adminGroup.DELETE("/users/:id", adminController.DeleteUser)
+//	}
+//
+//	logger.Info("Starting server", zap.String("port", cfg.Server.Port))
+//	if err := r.Run(cfg.Server.Port); err != nil {
+//		logger.Fatal("Failed to start server", zap.Error(err))
+//	}
+//}
+//
+//func CORSMiddleware() gin.HandlerFunc {
+//	return func(c *gin.Context) {
+//		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+//		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+//		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+//		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+//
+//		if c.Request.Method == "OPTIONS" {
+//			c.AbortWithStatus(204)
+//			return
+//		}
+//
+//		c.Next()
+//	}
+//}

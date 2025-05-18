@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="barcode_checker@localhost" uuid="ccc3d419-ac8d-4ae6-a251-f5748d3c1531">
+    <data-source source="LOCAL" name="barcode_checker@localhost" uuid="8ef11726-cfd1-4889-aeef-8d4384cf1add">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
